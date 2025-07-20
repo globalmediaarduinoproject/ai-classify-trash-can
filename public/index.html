@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쓰레기 분류 시스템</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    #cameraPreview { width: 100%; max-width: 500px; border: 1px solid #ccc; }
+    img { max-width: 300px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>AI 쓰레기 분류 시스템</h1>
+  <video id="cameraPreview" autoplay></video>
+  <button onclick="capturePhoto()">사진 찍기</button>
+  <img id="photoPreview" src="" alt="선택한 사진" />
+  <h3 id="result"></h3>
+
+  <script>
+    // 카메라 미리보기 시작
+    const video = document.getElementById('cameraPreview');
+    const photoPreview = document.getElementById('photoPreview');
+    const resultText = document.getElementById('result');
+
+    // 카메라 액세스 함수
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        console.error('카메라를 사용할 수 없습니다: ', err);
+        alert('카메라 접근을 허용해주세요!');
+      }
+    }
+
+    // 사진 찍기 함수
+    function capturePhoto() {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageUrl = canvas.toDataURL('image/jpeg');
+      photoPreview.src = imageUrl;
+
+      // 사진을 Netlify Function에 전달
+      classifyPhoto(imageUrl);
+    }
+
+    // 사진을 서버에 보내서 분류하기
+    async function classifyPhoto(imageUrl) {
+      const response = await fetch('/.netlify/functions/classifyPhoto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl })
+      });
+
+      const data = await response.json();
+      resultText.textContent = `분류 결과: ${data.classification}`;
+    }
+
+    // 페이지 로드 시 카메라 시작
+    startCamera();
+  </script>
+</body>
+</html>
