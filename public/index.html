@@ -4,45 +4,127 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI 쓰레기 분류 시스템</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: #0077cc;
+    }
+
+    .camera-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 20px;
-    }
-    #cameraPreview {
+      max-width: 900px;
       width: 100%;
-      max-width: 500px;
-      border: 1px solid #ccc;
     }
-    img {
-      max-width: 300px;
-      margin-top: 10px;
-      display: block;
+
+    .preview-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
     }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
+
+    #cameraPreview,
+    #photoPreview {
+      flex: 1;
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      border-radius: 10px;
+      border: 2px solid #0077cc;
+      background: black;
     }
+
+    #photoPreview {
+      border-color: #ccc;
+    }
+
+    #captureBtn {
+      width: 100%;
+      background: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    #captureBtn:hover {
+      background: #005fa3;
+    }
+
     #result {
       margin-top: 20px;
+      font-size: 20px;
+      text-align: center;
       font-weight: bold;
-      font-size: 18px;
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .result-general {
+      background-color: #ccc;
+      color: black;
+    }
+
+    .result-plastic {
+      background-color: #e0f7ff;
+      color: #0077cc;
+    }
+
+    .result-can {
+      background-color: #fff0e0;
+      color: #ff6600;
+    }
+
+    @media screen and (max-width: 768px) {
+      h1 {
+        font-size: 24px;
+      }
+
+      #captureBtn {
+        font-size: 16px;
+        padding: 14px;
+      }
     }
   </style>
 </head>
 <body>
   <h1>AI 쓰레기 분류 시스템</h1>
-  <video id="cameraPreview" autoplay></video>
-  <button onclick="capturePhoto()">사진 찍기</button>
-  <img id="photoPreview" src="" alt="선택한 사진" />
-  <h3 id="result">분류 결과가 여기에 표시됩니다</h3>
+  <div class="camera-container">
+    <div class="preview-wrapper">
+      <video id="cameraPreview" autoplay></video>
+      <img id="photoPreview" src="" alt="선택한 사진" />
+    </div>
+    <button id="captureBtn" onclick="capturePhoto()">📸 사진 찍기</button>
+    <h3 id="result" class="">분류 결과가 여기에 표시됩니다</h3>
+  </div>
 
   <script>
     const video = document.getElementById('cameraPreview');
     const photoPreview = document.getElementById('photoPreview');
     const resultText = document.getElementById('result');
+    const captureBtn = document.getElementById('captureBtn');
 
-    // 카메라 시작
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -53,8 +135,10 @@
       }
     }
 
-    // 사진 찍기
     function capturePhoto() {
+      captureBtn.disabled = true;
+      resultText.textContent = "🧠 AI가 분류 중입니다...";
+      resultText.className = "";
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.width = video.videoWidth;
@@ -66,7 +150,6 @@
       classifyPhoto(imageUrl);
     }
 
-    // Netlify Function에 이미지 전송 및 결과 수신
     async function classifyPhoto(imageUrl) {
       try {
         const response = await fetch('/.netlify/functions/classifyPhoto', {
@@ -80,14 +163,29 @@
         }
 
         const data = await response.json();
-        resultText.textContent = `분류 결과: ${JSON.stringify(data.result)}`;
+        const label = data.result?.toLowerCase() || 'unknown';
+
+        resultText.textContent = `🗑️ 분류 결과: ${data.result}`;
+
+        if (label.includes('플라스틱')) {
+          resultText.className = 'result-plastic';
+        } else if (label.includes('캔')) {
+          resultText.className = 'result-can';
+        } else if (label.includes('일반') || label.includes('쓰레기')) {
+          resultText.className = 'result-general';
+        } else {
+          resultText.className = '';
+        }
+
       } catch (error) {
         console.error('분류 요청 실패:', error);
         resultText.textContent = '❌ 분류 중 오류 발생. 다시 시도해주세요.';
+        resultText.className = '';
+      } finally {
+        captureBtn.disabled = false;
       }
     }
 
-    // 초기 실행
     startCamera();
   </script>
 </body>
