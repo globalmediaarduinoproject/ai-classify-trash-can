@@ -148,13 +148,15 @@
 
     async function startCamera() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } }  // 후면 카메라 고정
+        });
         video.srcObject = stream;
         video.style.display = 'block';
         capturedImage.style.display = 'none';
       } catch (err) {
         console.error('카메라 접근 실패:', err);
-        alert('카메라 접근을 허용해주세요.');
+        alert('카메라 접근을 허용했는지 확인해주세요.\n또는 후면 카메라를 사용할 수 없는 기기일 수 있습니다.');
       }
     }
 
