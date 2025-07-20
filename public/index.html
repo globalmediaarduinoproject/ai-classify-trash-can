@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=landscape"/>
   <title>AI 쓰레기 분류 시스템</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap" rel="stylesheet">
   <style>
@@ -10,11 +10,14 @@
       font-family: 'Noto Sans KR', sans-serif;
       background: #f0f4f8;
       margin: 0;
-      padding: 30px 20px;
+      padding: 30px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       color: #333;
+      height: 100vh;
+      box-sizing: border-box;
     }
 
     h1 {
@@ -23,62 +26,51 @@
       color: #0077cc;
     }
 
-    .camera-container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 20px;
-      max-width: 900px;
-      width: 100%;
-    }
-
-    .preview-wrapper {
+    .layout {
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      gap: 20px;
-      flex-wrap: wrap;
+      gap: 50px;
+      max-width: 1200px;
+      width: 100%;
     }
 
-    #cameraPreview,
-    #photoPreview {
+    .left-area, .right-area {
       flex: 1;
-      width: 100%;
-      max-width: 400px;
-      height: auto;
-      border-radius: 10px;
-      border: 2px solid #0077cc;
-      background: black;
+      max-width: 500px;
+      aspect-ratio: 4 / 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
-    #photoPreview {
-      border-color: #ccc;
-    }
-
-    #captureBtn {
+    #cameraPreview, #capturedImage {
       width: 100%;
-      background: #0077cc;
-      color: white;
-      border: none;
+      aspect-ratio: 4 / 3;
+      object-fit: contain;
       border-radius: 12px;
-      padding: 16px;
-      font-size: 18px;
-      margin-top: 20px;
-      cursor: pointer;
-      transition: background 0.3s ease;
+      border: 2px solid #0077cc;
+      background: #fff;
     }
 
-    #captureBtn:hover {
-      background: #005fa3;
+    #capturedImage {
+      display: none;
     }
 
-    #result {
-      margin-top: 20px;
-      font-size: 20px;
-      text-align: center;
+    #iconResult {
+      width: 200px;
+      height: 200px;
+      margin-bottom: 50px;
+    }
+
+    #textResult {
+      font-size: 30px;
       font-weight: bold;
-      padding: 10px;
-      border-radius: 10px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      text-align: center;
+      width: 70%;
     }
 
     .result-general {
@@ -96,57 +88,102 @@
       color: #ff6600;
     }
 
-    @media screen and (max-width: 768px) {
-      h1 {
-        font-size: 24px;
-      }
+    .result-unknown {
+      background-color: #f0f0f0;
+      color: #666;
+    }
 
-      #captureBtn {
-        font-size: 16px;
-        padding: 14px;
-      }
+    .button-area {
+      margin-top: 30px;
+    }
+
+    #captureBtn {
+      background: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 18px 28px;
+      font-size: 20px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      width:500px;
+    }
+
+    #captureBtn:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    #captureBtn:hover:enabled {
+      background: #005fa3;
     }
   </style>
 </head>
 <body>
   <h1>AI 쓰레기 분류 시스템</h1>
-  <div class="camera-container">
-    <div class="preview-wrapper">
-      <video id="cameraPreview" autoplay></video>
-      <img id="photoPreview" src="" alt="선택한 사진" />
+
+  <div class="layout">
+    <div class="left-area">
+      <video id="cameraPreview" autoplay playsinline></video>
+      <img id="capturedImage" src="" alt="촬영된 이미지" />
     </div>
+
+    <div class="right-area">
+      <img id="iconResult" src="icons/unknown.svg" alt="결과 아이콘" />
+      <div id="textResult" class="result-unknown">분류 결과가 여기에 표시됩니다</div>
+    </div>
+  </div>
+
+  <div class="button-area">
     <button id="captureBtn" onclick="capturePhoto()">📸 사진 찍기</button>
-    <h3 id="result" class="">분류 결과가 여기에 표시됩니다</h3>
   </div>
 
   <script>
     const video = document.getElementById('cameraPreview');
-    const photoPreview = document.getElementById('photoPreview');
-    const resultText = document.getElementById('result');
+    const capturedImage = document.getElementById('capturedImage');
+    const iconResult = document.getElementById('iconResult');
+    const textResult = document.getElementById('textResult');
     const captureBtn = document.getElementById('captureBtn');
+    let stream;
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
+        video.style.display = 'block';
+        capturedImage.style.display = 'none';
       } catch (err) {
         console.error('카메라 접근 실패:', err);
         alert('카메라 접근을 허용해주세요.');
       }
     }
 
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+    }
+
     function capturePhoto() {
       captureBtn.disabled = true;
-      resultText.textContent = "🧠 AI가 분류 중입니다...";
-      resultText.className = "";
+
+      iconResult.src = "icons/unknown.svg";
+      textResult.textContent = "분류 중입니다...";
+      textResult.className = "result-unknown";
+
       const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageUrl = canvas.toDataURL('image/jpeg');
-      photoPreview.src = imageUrl;
 
+      capturedImage.src = imageUrl;
+      video.style.display = "none";
+      capturedImage.style.display = "block";
+
+      stopCamera();
       classifyPhoto(imageUrl);
     }
 
@@ -158,35 +195,46 @@
           body: JSON.stringify({ imageUrl })
         });
 
-        if (!response.ok) {
-          throw new Error(`서버 오류: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
 
         const data = await response.json();
         const label = data.result?.toLowerCase() || 'unknown';
 
-        resultText.textContent = `🗑️ 분류 결과: ${data.result}`;
+        let iconPath = "icons/unknown.svg";
+        let className = "result-unknown";
+        let labelText = data.result || '알 수 없음';
 
-        if (label.includes('플라스틱')) {
-          resultText.className = 'result-plastic';
-        } else if (label.includes('캔')) {
-          resultText.className = 'result-can';
-        } else if (label.includes('일반') || label.includes('쓰레기')) {
-          resultText.className = 'result-general';
-        } else {
-          resultText.className = '';
+        if (label.includes("플라스틱")) {
+          iconPath = "icons/plastic.svg";
+          className = "result-plastic";
+        } else if (label.includes("캔")) {
+          iconPath = "icons/can.svg";
+          className = "result-can";
+        } else if (label.includes("일반") || label.includes("쓰레기")) {
+          iconPath = "icons/general.svg";
+          className = "result-general";
         }
 
+        iconResult.src = iconPath;
+        textResult.textContent = labelText;
+        textResult.className = className;
+
+        // 🔁 3초 후 실시간 카메라 다시 시작
+        setTimeout(() => {
+          startCamera();
+          captureBtn.disabled = false;
+        }, 3000);
+
       } catch (error) {
-        console.error('분류 요청 실패:', error);
-        resultText.textContent = '❌ 분류 중 오류 발생. 다시 시도해주세요.';
-        resultText.className = '';
-      } finally {
+        console.error('분류 실패:', error);
+        iconResult.src = "icons/unknown.svg";
+        textResult.textContent = '❌ 오류 발생. 다시 시도해주세요.';
+        textResult.className = 'result-unknown';
         captureBtn.disabled = false;
       }
     }
 
-    startCamera();
+    startCamera(); // 페이지 로드 시 카메라 시작
   </script>
 </body>
 </html>
